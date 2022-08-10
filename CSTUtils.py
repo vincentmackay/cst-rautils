@@ -23,6 +23,9 @@ class CSTBeam():
         self.theta_step = self.theta[0][1]
         self.freq_min = self.freqs[0]
         self.freq_step = self.freqs[1] - self.freqs[0]
+        self.gains = np.max(self.beams_dir,(2,3))
+        self.wl = 2.99792458e8 / (self.freqs * 1e9) #wavelength, in meters
+        self.A_e = ( self.gains * self.wl ** 2 ) / 4 / np.pi
         if load_comps:
             self.thetaphi_comps = np.load(beams_folder + 'all_thetaphi_comps.npy')
         if load_axratios:
@@ -200,3 +203,18 @@ class CSTBeam():
         ax.set_xlabel(r'$\theta$')
         ax.set_ylabel(r'$\phi$')
         fig.colorbar(image2d, label=cb_label, ax=ax)
+            
+    def get_e_A(self,r):
+        A_p = np.pi * r ** 2
+        return self.A_e / A_p
+    
+    def fractional_power(self, theta_min = 0, theta_max = 180, phi_min = 0, phi_max = 90):
+        scaling = np.abs( np.sin( self.theta * np.pi / 180))
+        total_power = np.sum(scaling * self.beams_dir, axis = (2,3))
+        i_phi_min = int(phi_min//self.phi_step)
+        i_phi_max = int(phi_max//self.phi_step)
+        i_theta_min = int(theta_min//self.theta_step)
+        i_theta_max = int(theta_max//self.theta_step)
+        power_within_angles = np.sum((scaling * self.beams_dir)[:,:,i_phi_min:i_phi_max,i_theta_min:i_theta_max], axis = (2,3))
+        return power_within_angles / total_power
+        
