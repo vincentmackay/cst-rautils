@@ -18,7 +18,7 @@ class CSTBeam():
     "all_*.npy" formats, and loads it.
     """
     
-    def __init__(self,beams_folder, zenith_rot = 0,ns_rot = 0, ew_rot = 0, load_comps=False,load_axratios=False):
+    def __init__(self,beams_folder, load_comps=False,load_axratios=False):
         self.directivity = np.load(beams_folder+'all_directivity.npy')
         self.freqs = np.load(beams_folder+'all_freqs.npy')
         self.phi = np.load(beams_folder + 'all_phi.npy')
@@ -34,37 +34,6 @@ class CSTBeam():
             self.thetaphi_comps = np.load(beams_folder + 'all_thetaphi_comps.npy')
         if load_axratios:
             self.axratios = np.load(beams_folder + 'all_axratios.npy')
-        
-        # Make sure the rotations are at the right resolution
-        ns_rot = self.theta_step*np.round(ns_rot/self.theta_step)
-        ew_rot = self.theta_step*np.round(ew_rot/self.theta_step)
-        zenith_rot = self.phi_step*np.round(zenith_rot/self.phi_step)
-        
-        # I do the rotations using this method:
-        # https://stla.github.io/stlapblog/posts/RotationSphericalCoordinates.html
-        
-        a_x = ew_rot * (np.pi/180)
-        a_y = ns_rot * (np.pi/180)
-        a_z = zenith_rot * (np.pi/180)
-                
-        R_x = np.array([ [np.cos(a_x/2) , -1j*np.sin(a_x/2)] , [-1j*np.sin(a_x/2) , np.cos(a_x/2)] ])
-        R_y = np.array([ [ np.cos(a_y/2) , -np.sin(a_y/2) ] , [ np.sin(a_y/2) , np.cos(a_y/2) ] ])
-        R_z = np.array([ [ np.exp(-1j * a_z/2) , 0 ] , [ 0 , np.exp(1j * a_z/2) ] ])
-
-
-        
-        for R in [R_z,R_x,R_y]: # this determines the order of the rotations
-            t = self.theta * (np.pi/180)
-            p = self.phi * (np.pi/180)
-            psi = np.array([np.cos(t/2), np.exp(1j * p) * np.sin(t/2)])
-            psi[0] = R[0,0] * psi[0] + R[0,1] * psi[1]
-            psi[1] = R[1,0] * psi[0] + R[1,1] * psi[1]
-            new_theta = (180/np.pi) * 2*np.arctan(np.abs(psi[1])/np.abs(psi[0]))
-            new_phi = (180/np.pi) * (np.angle(psi[1]) - np.angle(psi[0]))
-            # Reindex
-            i_new_theta = (new_theta / self.theta_step).astype('int')
-            i_new_phi = (new_phi / self.phi_step).astype('int')
-            self.directivity = self.directivity[:,:,i_new_phi,i_new_theta]
         
     def rotate(self, zenith_rot = 0, ns_rot = 0, ew_rot = 0):
         """
@@ -92,17 +61,18 @@ class CSTBeam():
         R_z = np.array([ [ np.exp(-1j * a_z/2) , 0 ] , [ 0 , np.exp(1j * a_z/2) ] ])
         
         for R in [R_z,R_x,R_y]: # this determines the order of the rotations
-            t = new_beam.theta * (np.pi/180)
-            p = new_beam.phi * (np.pi/180)
-            psi = np.array([np.cos(t/2), np.exp(1j * p) * np.sin(t/2)])
-            psi[0] = R[0,0] * psi[0] + R[0,1] * psi[1]
-            psi[1] = R[1,0] * psi[0] + R[1,1] * psi[1]
-            new_theta = (180/np.pi) * 2*np.arctan(np.abs(psi[1])/np.abs(psi[0]))
-            new_phi = (180/np.pi) * (np.angle(psi[1]) - np.angle(psi[0]))
-            # Reindex
-            i_new_theta = (new_theta / new_beam.theta_step).astype('int')
-            i_new_phi = (new_phi / new_beam.phi_step).astype('int')
-            new_beam.directivity = new_beam.directivity[:,:,i_new_phi,i_new_theta]
+            if not np.allclose(R,np.eye(2)):
+                t = new_beam.theta * (np.pi/180)
+                p = new_beam.phi * (np.pi/180)
+                psi = np.array([np.cos(t/2), np.exp(1j * p) * np.sin(t/2)])
+                psi[0] = R[0,0] * psi[0] + R[0,1] * psi[1]
+                psi[1] = R[1,0] * psi[0] + R[1,1] * psi[1]
+                new_theta = (180/np.pi) * 2*np.arctan2(np.abs(psi[1]),np.abs(psi[0]))
+                new_phi = (180/np.pi) * (np.angle(psi[1]) - np.angle(psi[0]))
+                # Reindex
+                i_new_theta = (new_theta / new_beam.theta_step).astype('int')
+                i_new_phi = (new_phi / new_beam.phi_step).astype('int')
+                new_beam.directivity = new_beam.directivity[:,:,i_new_phi,i_new_theta]
          
         return new_beam
         
