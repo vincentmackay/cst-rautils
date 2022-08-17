@@ -76,7 +76,7 @@ class CSTBeam():
          
         return new_beam
         
-    def plot_1d_cart(self,phi_cut,i_freq,pol=0, dB = True):
+    def plot_1d_cart(self,phi_cut,i_freq,i_pol=0, dB = True,norm_max=False):
         """
         Plot a 1D beam cut (cartesian).
         
@@ -94,9 +94,11 @@ class CSTBeam():
         i_phi_cut_2 = int((phi_cut+180) // self.phi_step)
         fig,ax = plt.subplots(1,1,figsize=[20,10])
         ylabel = r'$I(\theta)$ (arbitrary units)'
-        if pol==-1:
+        if i_pol==-1:
             #print('Plotting (pol_0 ^ 2 + pol_1 ^ 2) ^ 0.5')
             power = (self.directivity[0,:,:,:] ** 2. + self.directivity[1,:,:,:] ** 2.) ** 0.5
+            if norm_max:
+                power = np.moveaxis(np.moveaxis(power,[0,1],[2,3]) / np.max(power,axis=(2,3)),[0,1],[2,3])
             if dB:
                 power = 10 * np.log10(power)
                 ylabel = r'$I(\theta)$ (dB)'
@@ -107,20 +109,22 @@ class CSTBeam():
         else:
             #print('Plotting pol_{:d}'.format(pol))
             power = self.directivity
+            if norm_max:
+                power = np.moveaxis(np.moveaxis(power,[0,1],[2,3]) / np.max(power,axis=(2,3)),[0,1],[2,3])
             if dB:
                 power = 10 * np.log10(power)
                 ylabel = r'$I(\theta)$ (dB)'
-            ax.plot(self.theta[i_phi_cut,:] , power[pol,i_freq][i_phi_cut][:], **line_props)
+            ax.plot(self.theta[i_phi_cut,:] , power[i_pol,i_freq][i_phi_cut][:], **line_props)
             # Need to plot the other side too, but the beam is perfectly symmetric in my simulation
             # so this is somewhat redundant  information.
-            ax.plot(-self.theta[i_phi_cut_2] , power[pol,i_freq][i_phi_cut][:], **line_props)
+            ax.plot(-self.theta[i_phi_cut_2] , power[i_pol,i_freq][i_phi_cut][:], **line_props)
             
         ax.set_xlabel('Theta (deg)')
         ax.set_ylabel(ylabel)
-        ax.set_title('Freq = {:.1f} GHz, $\phi$ = {:.1f}$^\circ$'.format(self.freqs[i_freq],self.phi[i_phi_cut][0]))
+        ax.set_title('{:.1f} GHz, $\phi$ = {:.1f}$^\circ$'.format(self.freqs[i_freq],self.phi[i_phi_cut][0]))
         ax.set_xlim([-20,20])
 
-    def plot_1d_polar(self,phi_cut,i_freq,pol=0, dB = True):
+    def plot_1d_polar(self,phi_cut,i_freq,i_pol=0, dB = True, norm_max = False):
         """
         Plot a 1D beam cut (polar).
         
@@ -139,9 +143,12 @@ class CSTBeam():
         fig, ax = plt.subplots(1,1,figsize=[15,15],subplot_kw={'projection': 'polar'})
         ax.set_theta_zero_location("N")
         ylabel = r'$I(\theta)$ (arbitrary units)'
-        if pol==-1:
+        if i_pol==-1:
             #print('Plotting (pol_0 ^ 2 + pol_1 ^ 2) ^ 0.5')
             power = (self.directivity[0,:,:,:] ** 2. + self.directivity[1,:,:,:] ** 2.) ** 0.5
+            
+            if norm_max:
+                power = np.moveaxis(np.moveaxis(power,[0,1],[2,3]) / np.max(power,axis=(2,3)),[0,1],[2,3])
             if dB:
                 power = 10 * np.log10(power)
                 ylabel = r'$I(\theta)$ (dB)'
@@ -152,19 +159,21 @@ class CSTBeam():
         else:
             #print('Plotting pol_{:d}'.format(pol))
             power = self.directivity
+            if norm_max:
+                power = np.moveaxis(np.moveaxis(power,[0,1],[2,3]) / np.max(power,axis=(2,3)),[0,1],[2,3])
             if dB:
                 power = 10 * np.log10(power)
                 ylabel = r'$I(\theta)$ (dB)'
-            ax.plot((np.pi / 180)*self.theta[i_phi_cut,:] , power[pol,i_freq][i_phi_cut][:], **line_props)
+            ax.plot((np.pi / 180)*self.theta[i_phi_cut,:] , power[i_pol,i_freq][i_phi_cut][:], **line_props)
             # Need to plot the other side too, but the beam is perfectly symmetric in my simulation
             # so this is somewhat redundant  information.
-            ax.plot(-(np.pi / 180)*self.theta[i_phi_cut_2] , power[pol,i_freq][i_phi_cut][:], **line_props)
+            ax.plot(-(np.pi / 180)*self.theta[i_phi_cut_2] , power[i_pol,i_freq][i_phi_cut][:], **line_props)
             
         ax.set_xlabel('Theta (deg)')
         ax.set_ylabel(ylabel)
-        ax.set_title('Freq = {:.1f} GHz, $\phi$ = {:.1f}$^\circ$'.format(self.freqs[i_freq],self.phi[i_phi_cut][0]))
+        ax.set_title('{:.1f} GHz, $\phi$ = {:.1f}$^\circ$'.format(self.freqs[i_freq],self.phi[i_phi_cut][0]))
         
-    def plot_2d_uv(self, i_freq, i_pol, dB = True, front_cutoff = 90, back_cutoff = -1):
+    def plot_2d_uv(self, i_freq, i_pol = 0, dB = True, front_cutoff = 90, back_cutoff = -1, norm_max = False):
         """
         Plot a 2D beam (uv).
         
@@ -181,16 +190,20 @@ class CSTBeam():
         
 
         fig,ax = plt.subplots(1,1,figsize=[10,10])
+        power = self.directivity
+        if norm_max:
+            power = np.moveaxis(np.moveaxis(power,[0,1],[2,3]) / np.max(power,axis=(2,3)),[0,1],[2,3])
+        
         if dB:
-            vmin = np.min(10*np.log10(self.directivity[i_pol,i_freq,:,:]))
-            vmax = np.max(10*np.log10(self.directivity[i_pol,i_freq,:,:]))
+            power = 10 * np.log10(power)
             cb_label = 'dB'
-            image2d = ax.pcolormesh(u[:,to_plot],v[:,to_plot],10*np.log10(self.directivity[i_pol,i_freq][:,to_plot]),shading='auto',vmin = vmin, vmax = vmax)
         else:
-            vmin = np.min(self.directivity[i_pol,i_freq,:,:])
-            vmax = np.max(self.directivity[i_pol,i_freq,:,:])
             cb_label = 'Intensity (arbitrary units)'
-            image2d = ax.pcolormesh(u[:,to_plot],v[:,to_plot],self.directivity[i_pol,i_freq][:,to_plot],shading='auto',vmin = vmin, vmax = vmax)
+            if norm_max:
+                'Intensity (max normalized)'
+        vmin = np.min(power[i_pol,i_freq,:,:])
+        vmax = np.max(power[i_pol,i_freq,:,:])
+        image2d = ax.pcolormesh(u[:,to_plot],v[:,to_plot],power[i_pol,i_freq][:,to_plot],shading='auto',vmin = vmin, vmax = vmax)
         
         ax.set_aspect('equal')
         ax.set_xlim([-1,1])
@@ -199,7 +212,7 @@ class CSTBeam():
         ax.set_ylabel('v')
         fig.colorbar(image2d,label = cb_label, ax=ax)
     
-    def plot_2d_cart(self, i_freq, i_pol, dB = True):
+    def plot_2d_cart(self, i_freq, i_pol = 0, dB = True, norm_max = False):
         """
         Plot a 2D beam (cartesian).
         
@@ -207,18 +220,22 @@ class CSTBeam():
         """
         fig,ax = plt.subplots(1,1,figsize=[20,10])
         
-        if dB:
-            vmin = np.min(10*np.log10(self.directivity[i_pol,i_freq,:,:]))
-            vmax = np.max(10*np.log10(self.directivity[i_pol,i_freq,:,:]))
-            cb_label = 'dB'
-            image2d = ax.imshow(10*np.log10(self.directivity[i_pol,i_freq]),vmin = vmin, vmax = vmax, extent = [0 , 180, 0 , 360])
-        else:
-            vmin = np.min(self.directivity[i_pol,i_freq,:,:])
-            vmax = np.max(self.directivity[i_pol,i_freq,:,:])
-            cb_label = 'Intensity (arbitrary units)'
-            image2d = ax.imshow(self.directivity[i_pol,i_freq],vmin = vmin, vmax = vmax, extent = [0 , 180, 0 , 360])
+        power = self.directivity
+        if norm_max:
+            power = np.moveaxis(np.moveaxis(power,[0,1],[2,3]) / np.max(power,axis=(2,3)),[0,1],[2,3])
         
-            
+        if dB:
+            power = 10 * np.log10(power)
+            cb_label = 'dB'
+        else:
+            cb_label = 'Intensity (arbitrary units)'
+            if norm_max:
+                'Intensity (max normalized)'
+        
+        vmin = np.min(power[i_pol,i_freq,:,:])
+        vmax = np.max(power[i_pol,i_freq,:,:])
+        image2d = ax.imshow(power[i_pol,i_freq],vmin = vmin, vmax = vmax, extent = [0 , 180, 0 , 360])
+          
         ax.set_aspect('auto')
         ax.set_xlabel(r'$\theta$')
         ax.set_ylabel(r'$\phi$')
@@ -233,7 +250,7 @@ class CSTBeam():
         A_p = np.pi * r ** 2
         return self.A_e / A_p
     
-    def fractional_power(self, theta_min = 0, theta_max = 180, phi_min = 0, phi_max = 360):
+    def get_fractional_power(self, theta_min = 0, theta_max = 180, phi_min = 0, phi_max = 360):
         """
         Get the fractional power.
         
@@ -248,4 +265,27 @@ class CSTBeam():
         i_theta_max = int(theta_max//self.theta_step)
         power_within_angles = np.sum((scaling * self.directivity)[:,:,i_phi_min:i_phi_max,i_theta_min:i_theta_max], axis = (2,3))
         return power_within_angles / total_power
+    
+    def get_beamwidth(self, phi_cut, dB_threshold = 3, deg = True):
+        """
+        Get the 3dB beamwidth. 
         
+        This function gets the 3dB beamwidth at a given phi cut.
+        """
+        i_phi_cut = int(phi_cut//self.phi_step)
+        i_phi_cut_2 = int((phi_cut+180) // self.phi_step)
+        
+        power = 10 * np.log10(self.directivity)
+        beam_max = np.amax(power,axis=(2,3))
+        power_subtracted = np.moveaxis(np.subtract(np.moveaxis(power[:,:,i_phi_cut],2,0),(beam_max-dB_threshold)),0,2)
+        i_beamwidth_right = np.argmax(power_subtracted<=0,axis=2)
+        power_subtracted = np.moveaxis(np.subtract(np.moveaxis(power[:,:,i_phi_cut_2],2,0),(beam_max-dB_threshold)),0,2)
+        i_beamwidth_left = np.argmax(power_subtracted<=0,axis=2)
+        beamwidth = np.zeros([2,self.freqs.shape[0]])
+        for i_pol in [0,1]:
+            beamwidth_right = self.theta[i_phi_cut,:][i_beamwidth_right[i_pol,:]]
+            beamwidth_left = self.theta[i_phi_cut,:][i_beamwidth_left[i_pol,:]]
+            beamwidth[i_pol,:] = beamwidth_right + beamwidth_left
+        if not deg:
+            beamwidth*=(np.pi/180)
+        return beamwidth
