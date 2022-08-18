@@ -9,6 +9,8 @@ Created on Tue Aug  2 17:02:11 2022.
 import matplotlib.pyplot as plt
 import numpy as np
 import copy
+from scipy.special import jn, jn_zeros
+
 
 class CSTBeam():
     """
@@ -76,7 +78,7 @@ class CSTBeam():
          
         return new_beam
         
-    def plot_1d_cart(self,phi_cut,i_freq,i_pol=0, dB = True,norm_max=False):
+    def plot_1d_cart(self,phi_cut,i_freq,i_pol=0, dB = True,norm_max=False, airy=False, r = 3):
         """
         Plot a 1D beam cut (cartesian).
         
@@ -118,13 +120,28 @@ class CSTBeam():
             # Need to plot the other side too, but the beam is perfectly symmetric in my simulation
             # so this is somewhat redundant  information.
             ax.plot(-self.theta[i_phi_cut_2] , power[i_pol,i_freq][i_phi_cut][:], **line_props)
-            
+        
+        if airy:
+            airy_res = 0.1
+            airy_theta = np.arange(-180,180,airy_res)
+            if dB:
+                I0 = 10 ** (np.max(power[i_pol,i_freq][i_phi_cut])/10)
+            else:
+                I0 = np.max(power[i_pol,i_freq][i_phi_cut])
+            k = 2 * np.pi / self.wl[i_freq]
+            airy_func = lambda I0, k, r, theta: I0 * ( 2 * jn(1,k * r * np.sin(theta * np.pi/180)) / k / r / np.sin(theta * np.pi/180)  ) ** 2
+            airy = airy_func(I0, k, r, airy_theta)
+            if dB:
+                airy = 10 * np.log10(airy)
+            ax.plot(airy_theta, airy, label='Airy pattern with same max')
+        
+        ax.legend()
         ax.set_xlabel('Theta (deg)')
         ax.set_ylabel(ylabel)
         ax.set_title('{:.1f} GHz, $\phi$ = {:.1f}$^\circ$'.format(self.freqs[i_freq],self.phi[i_phi_cut][0]))
         ax.set_xlim([-20,20])
 
-    def plot_1d_polar(self,phi_cut,i_freq,i_pol=0, dB = True, norm_max = False):
+    def plot_1d_polar(self,phi_cut,i_freq,i_pol=0, dB = True, norm_max = False, airy=False, r = 3):
         """
         Plot a 1D beam cut (polar).
         
@@ -168,7 +185,23 @@ class CSTBeam():
             # Need to plot the other side too, but the beam is perfectly symmetric in my simulation
             # so this is somewhat redundant  information.
             ax.plot(-(np.pi / 180)*self.theta[i_phi_cut_2] , power[i_pol,i_freq][i_phi_cut][:], **line_props)
+        
             
+        if airy:
+            airy_res = 0.1
+            airy_theta = np.arange(-180,180,airy_res)
+            if dB:
+                I0 = 10 ** (np.max(power[i_pol,i_freq][i_phi_cut])/10)
+            else:
+                I0 = np.max(power[i_pol,i_freq][i_phi_cut])
+            k = 2 * np.pi / self.wl[i_freq]
+            airy_func = lambda I0, k, r, theta: I0 * ( 2 * jn(1,k * r * np.sin(theta * np.pi/180)) / k / r / np.sin(theta * np.pi/180)  ) ** 2
+            airy = airy_func(I0, k, r, airy_theta)
+            if dB:
+                airy = 10 * np.log10(airy)
+            ax.plot(airy_theta* np.pi/180, airy, label='Airy pattern with same max')
+        
+        ax.legend()
         ax.set_xlabel('Theta (deg)')
         ax.set_ylabel(ylabel)
         ax.set_title('{:.1f} GHz, $\phi$ = {:.1f}$^\circ$'.format(self.freqs[i_freq],self.phi[i_phi_cut][0]))
