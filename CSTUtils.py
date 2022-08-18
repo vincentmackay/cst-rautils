@@ -118,8 +118,8 @@ class CSTBeam():
         if dB:
             power = 10 * np.log10(power)
             ylabel = r'$I(\theta)$ (dB)'
-        ax.plot((np.pi / 180)*self.theta[i_phi_cut] , power[i_pol,i_freq][i_phi_cut][:], **line_props)
-        ax.plot(-(np.pi / 180)*self.theta[i_phi_cut_2] , power[i_pol,i_freq][i_phi_cut_2][:], **line_props)
+        ax.plot((np.pi / 180)*self.theta[i_phi_cut] , power[i_pol,i_freq][i_phi_cut][:], **line_props, label='Simulated beam',zorder=1)
+        ax.plot(-(np.pi / 180)*self.theta[i_phi_cut_2] , power[i_pol,i_freq][i_phi_cut_2][:], **line_props,zorder=1)
         
         
         if airy:
@@ -134,7 +134,7 @@ class CSTBeam():
             airy = airy_func(I0, k, r, airy_theta)
             if dB:
                 airy = 10 * np.log10(airy)
-            ax.plot(airy_theta* np.pi/180, airy, label='Airy pattern with same max')
+            ax.plot(airy_theta* np.pi/180, airy, label='Airy pattern with same max',zorder=0)
         
         ax.legend()
         ax.set_xlabel('Theta (deg)')
@@ -147,7 +147,7 @@ class CSTBeam():
             ax.set_xticks(xticks)
             ax.set_xticklabels(xtick_labels)
         if projection=='polar':
-            ax.set_title('{:.3g} GHz, $\phi$ = {:.3g}$^\circ$'.format(self.freqs[i_freq],self.phi[i_phi_cut][0]))
+            ax.set_title('{:.3g} GHz, $\phi$ = {:.4g}$^\circ$'.format(self.freqs[i_freq],self.phi[i_phi_cut][0]))
             
         return fig, ax;
     
