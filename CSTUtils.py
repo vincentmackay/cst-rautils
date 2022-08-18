@@ -139,7 +139,7 @@ class CSTBeam():
         ax.set_xlabel('Theta (deg)')
         ax.set_ylabel(ylabel)
         ax.set_title('{:.1f} GHz, $\phi$ = {:.1f}$^\circ$'.format(self.freqs[i_freq],self.phi[i_phi_cut][0]))
-        ax.set_xlim([-20,20])
+        ax.set_xlim([-90,90])
 
     def plot_1d_polar(self,phi_cut,i_freq,i_pol=0, dB = True, norm_max = False, airy=False, r = 3):
         """
