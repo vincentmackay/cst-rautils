@@ -79,7 +79,7 @@ class CSTBeam():
         return new_beam
         
     
-    def plot_1d(self,phi_cut,freq,projection = 'rectilinear',i_pol=0, dB = True,norm_max=False, airy=False, r = 3):
+    def plot_1d(self,phi_cut,freq_to_plot,projection = 'rectilinear',i_pol=0, dB = True,norm_max=False, airy=False, r = 3, show_ylabel = False):
         """
         Plot a 1D beam cut .
         
@@ -89,26 +89,40 @@ class CSTBeam():
         """
         line_props = {
         'linestyle': '-',
-        'color': 'r',
         'linewidth': 2,
         'alpha': 1
         }
         
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
         
-        i_freq = np.argmin(np.abs(self.freqs-freq))
-        if freq not in self.freqs:
-            print('Frequency {:.3g} GHz was not simulated. Using the closest ({:.3g} GHz) instead.'.format(freq, self.freqs[i_freq]))
-            print('A list of the simulated frequencies is stored as beam_name.freqs.')
+        if type(phi_cut) == list:
+            phi_cut = np.array(phi_cut)
+        else:
+            phi_cut = np.array([phi_cut])
         
-        i_phi_cut = int(phi_cut//self.phi_step)
-        i_phi_cut_2 = int((phi_cut+180) // self.phi_step)
+        if type(freq_to_plot) == list:
+            freq_to_plot = np.array(freq_to_plot)
+        else:
+            freq_to_plot = np.array([freq_to_plot])
+        freq_index = np.zeros(freq_to_plot.shape,dtype=int)
+        
+        
+        for i_freq,freq in enumerate(freq_to_plot):
+            freq_index[i_freq] = np.argmin(np.abs(self.freqs-freq))
+            if freq not in self.freqs:
+                print('Frequency {:.3g} GHz was not simulated. Using the closest ({:.3g} GHz) instead.'.format(freq, self.freqs[freq_index[i_freq]]))
+                print('A list of the simulated frequencies is stored as beam_name.freqs.')
+        
+        phi_cut_index = (phi_cut//self.phi_step).astype(int)
+        phi_cut_index_2 = ((phi_cut+180) // self.phi_step).astype(int)
         if projection == 'rectilinear':
             figsize = [12,8]
         if projection == 'polar':
-            figsize = [12,12]
-        fig, ax = plt.subplots(1,1,figsize=figsize,subplot_kw={'projection': projection})
-        if projection=='polar':
-            ax.set_theta_zero_location("N")
+            figsize = [16,16*freq_to_plot.shape[0]]
+        fig, ax = plt.subplots(1,freq_to_plot.shape[0],figsize=figsize,subplot_kw={'projection': projection})
+        if freq_to_plot.shape[0] == 1:
+            ax = [ax]
+        
         ylabel = r'$I(\theta)$ (arbitrary units)'
     
     
@@ -118,37 +132,41 @@ class CSTBeam():
         if dB:
             power = 10 * np.log10(power)
             ylabel = r'$I(\theta)$ (dB)'
-        ax.plot((np.pi / 180)*self.theta[i_phi_cut] , power[i_pol,i_freq][i_phi_cut][:], **line_props, label='Simulated beam',zorder=1)
-        ax.plot(-(np.pi / 180)*self.theta[i_phi_cut_2] , power[i_pol,i_freq][i_phi_cut_2][:], **line_props,zorder=1)
+        for i_freq,freq in enumerate(freq_to_plot):
+            if projection=='polar':
+                ax[i_freq].set_theta_zero_location("N")
+            for i_phi_cut in range(phi_cut_index.shape[0]):
+                ax[i_freq].plot((np.pi / 180)*self.theta[phi_cut_index[i_phi_cut]] , power[i_pol,freq_index[i_freq]][phi_cut_index[i_phi_cut]][:],colors[i_phi_cut], label=airy*'Simulated beam '+r'$\phi$ = {:.4g}$^\circ$'.format(self.phi[phi_cut_index[i_phi_cut]][0]),zorder=1, **line_props)
+                ax[i_freq].plot(-(np.pi / 180)*self.theta[phi_cut_index_2[i_phi_cut]] , power[i_pol,freq_index[i_freq]][phi_cut_index_2[i_phi_cut]][:],colors[i_phi_cut],zorder=1, **line_props)
+                
+                
+                if airy:
+                    airy_res = 0.1
+                    airy_theta = np.arange(-180,180,airy_res)
+                    if dB:
+                        I0 = 10 ** (np.max(power[i_pol,i_freq][i_phi_cut])/10)
+                    else:
+                        I0 = np.max(power[i_pol,i_freq][i_phi_cut])
+                    k = 2 * np.pi / self.wl[i_freq]
+                    airy_func = lambda I0, k, r, theta: I0 * ( 2 * jn(1,k * r * np.sin(theta * np.pi/180)) / k / r / np.sin(theta * np.pi/180)  ) ** 2
+                    airy = airy_func(I0, k, r, airy_theta)
+                    if dB:
+                        airy = 10 * np.log10(airy)
+                    ax[i_freq].plot(airy_theta* np.pi/180, airy, label='Airy pattern with same max',zorder=0)
         
-        
-        if airy:
-            airy_res = 0.1
-            airy_theta = np.arange(-180,180,airy_res)
-            if dB:
-                I0 = 10 ** (np.max(power[i_pol,i_freq][i_phi_cut])/10)
-            else:
-                I0 = np.max(power[i_pol,i_freq][i_phi_cut])
-            k = 2 * np.pi / self.wl[i_freq]
-            airy_func = lambda I0, k, r, theta: I0 * ( 2 * jn(1,k * r * np.sin(theta * np.pi/180)) / k / r / np.sin(theta * np.pi/180)  ) ** 2
-            airy = airy_func(I0, k, r, airy_theta)
-            if dB:
-                airy = 10 * np.log10(airy)
-            ax.plot(airy_theta* np.pi/180, airy, label='Airy pattern with same max',zorder=0)
-        
-        ax.legend()
-        ax.set_xlabel('Theta (deg)')
-        ax.set_ylabel(ylabel)
-        if projection=='rectilinear':
-            ax.set_title('{:.1f} GHz, $\phi$ = {:.1f}$^\circ$'.format(self.freqs[i_freq],self.phi[i_phi_cut][0]))
-            ax.set_xlim([-np.pi/2,np.pi/2])
-            xticks = np.arange(-np.pi/2,2*np.pi/3,np.pi/6)
-            xtick_labels = np.round((xticks * 180/np.pi)).astype('int')
-            ax.set_xticks(xticks)
-            ax.set_xticklabels(xtick_labels)
-        if projection=='polar':
-            ax.set_title('{:.3g} GHz, $\phi$ = {:.4g}$^\circ$'.format(self.freqs[i_freq],self.phi[i_phi_cut][0]))
-            
+            ax[i_freq].set_xlabel(r'$\theta$')
+            if show_ylabel:
+                ax[i_freq].set_ylabel(ylabel)
+            if projection=='rectilinear':
+                ax[i_freq].set_title('{:.1f} GHz, $\phi$ = {:.1f}$^\circ$'.format(self.freqs[freq_index[i_freq]],self.phi[phi_cut_index[i_phi_cut]][0]))
+                ax[i_freq].set_xlim([-np.pi/2,np.pi/2])
+                xticks = np.arange(-np.pi/2,2*np.pi/3,np.pi/6)
+                xtick_labels = np.round((xticks * 180/np.pi)).astype('int')
+                ax[i_freq].set_xticks(xticks)
+                ax[i_freq].set_xticklabels(xtick_labels)
+            if projection=='polar':
+                ax[i_freq].set_title('{:.3g} GHz'.format(self.freqs[freq_index[i_freq]]))
+        ax[int(np.floor(freq_to_plot.shape[0]/2))].legend(loc = 'lower center', ncol = freq_to_plot.shape[0])
         return fig, ax;
     
     
