@@ -79,7 +79,7 @@ class CSTBeam():
         return new_beam
         
     
-    def plot_1d(self,phi_cut,freq,projection = None,i_pol=0, dB = True, norm_max=True, airy=False, r = 3, show_ylabel = False, airy_alt = False, ax = None):
+    def plot_1d(self,freq = 1.0, phi_cut=0,projection = None,i_pol=0, dB = True, norm_max=True, airy=False, r = 3, show_ylabel = False, airy_alt = False, ax = None):
         """
         Plot a 1D beam cut .
         
@@ -159,7 +159,7 @@ class CSTBeam():
                 
                 if dB:
                     airy = 10 * np.log10(airy)
-                ax[i_freq].plot(rad_scale * airy_theta, airy, label='Airy pattern with same max',zorder=0,color = '#eeaa00')
+                ax.plot(rad_scale * airy_theta, airy, label='Airy pattern with same max',zorder=0,color = '#eeaa00')
     
         ax.set_xlabel(r'$\theta$')
         if show_ylabel:
