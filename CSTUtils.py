@@ -79,7 +79,7 @@ class CSTBeam():
         return new_beam
         
     
-    def plot_1d(self,freq = 1.0, phi_cut=0,projection = None,i_pol=0, dB = True, norm_max=True, airy=False, r = 3, show_ylabel = False, airy_alt = False, ax = None):
+    def plot_1d(self,freq = 1.0, phi_cut=0,projection = None,colors = None,i_pol=0, dB = True, norm_max=True, airy=False, r = 3, show_ylabel = False, airy_alt = False, ax = None):
         """
         Plot a 1D beam cut .
         
@@ -93,7 +93,8 @@ class CSTBeam():
         'alpha': 1
         }
         
-        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        if colors == None:
+            colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
         
         if type(phi_cut) == list:
             phi_cut = np.array(phi_cut)
@@ -169,6 +170,7 @@ class CSTBeam():
         if projection=='polar':
             ax.set_title('{:.3g} GHz'.format(self.freqs[i_freq]))
         ax.legend(loc = 'lower center')
+    
     
     
     def plot_2d(self, freq, mode = 'uv', i_pol = 0, dB = True, front_cutoff = 90, back_cutoff = -1, norm_max = False):
@@ -279,3 +281,15 @@ class CSTBeam():
         if not deg:
             beamwidth*=(np.pi/180)
         return beamwidth
+    
+    def get_freq_index(self, freq):
+        """
+        Get the frequency index of a given frequency.
+        
+        This function gets the frequency index for a frequency passed in argument, in GHz.
+        """
+        i_freq = np.argmin(np.abs(self.freqs-freq))
+        if freq not in self.freqs:
+            print('Frequency {:.3g} GHz was not simulated. Using the closest ({:.3g} GHz) instead.'.format(freq, self.freqs[i_freq]))
+            print('A list of the simulated frequencies is stored as beam_name.freqs.')
+        return i_freq
