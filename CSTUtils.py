@@ -173,7 +173,7 @@ class CSTBeam():
     
     
     
-    def plot_2d(self, freq, mode = 'uv', i_pol = 0, dB = True, front_cutoff = 90, back_cutoff = -1, norm_max = False):
+    def plot_2d(self, freq, mode = 'uv', i_pol = 0, dB = True, front_cutoff = 90, back_cutoff = -1, norm_max = False, ax = None):
         """
         Plot a 2D beam (uv).
         
@@ -184,6 +184,8 @@ class CSTBeam():
         if freq not in self.freqs:
             print('Frequency {:.3g} GHz was not simulated. Using the closest ({:.3g} GHz) instead.'.format(freq, self.freqs[i_freq]))
             print('A list of the simulated frequencies is stored as beam_name.freqs.')
+
+        
         
         if mode=='uv':
             u = np.sin(self.theta*np.pi/180) * np.cos(self.phi*np.pi/180)
@@ -200,15 +202,19 @@ class CSTBeam():
                     print('Careful, uv projection misbehaves if plotting more than 90 degrees of the beam.')
             figsize = [12,12]
         
+        
         if mode=='cart':
             figsize = [12,8]
-        fig,ax = plt.subplots(1,1,figsize=figsize)
+        if ax == None:
+            fig,ax = plt.subplots(1,1,figsize=figsize)
+        else:
+            fig = ax.get_figure()
         power = self.directivity
         if norm_max:
             power = np.moveaxis(np.moveaxis(power,[0,1],[2,3]) / np.max(power,axis=(2,3)),[0,1],[2,3])
         if dB:
             power = 10 * np.log10(power)
-            cb_label = 'dB'
+            cb_label = 'Beam intensity (dB)'
         else:
             cb_label = 'Intensity (arbitrary units)'
             if norm_max:
@@ -230,7 +236,6 @@ class CSTBeam():
             ax.set_xlabel(r'$\theta$ (deg)')
             ax.set_ylabel(r'$\phi$ (deg)')
         fig.colorbar(image2d,label = cb_label, ax=ax)
-        return fig, ax
     
          
     def get_e_A(self,r):
