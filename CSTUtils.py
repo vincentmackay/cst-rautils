@@ -20,7 +20,7 @@ class CSTBeam():
     "all_*.npy" formats, and loads it.
     """
     
-    def __init__(self,beams_folder, load_comps=False,load_axratios=False):
+    def __init__(self,beams_folder):
         self.directivity = np.load(beams_folder+'all_directivity.npy')
         self.freqs = np.load(beams_folder+'all_freqs.npy')
         self.phi = np.load(beams_folder + 'all_phi.npy')
@@ -32,10 +32,8 @@ class CSTBeam():
         self.gains = np.max(self.directivity,(2,3))
         self.wl = 2.99792458e8 / (self.freqs * 1e9) #wavelength, in meters
         self.A_e = ( self.gains * self.wl ** 2 ) / 4 / np.pi
-        if load_comps:
-            self.thetaphi_comps = np.load(beams_folder + 'all_thetaphi_comps.npy')
-        if load_axratios:
-            self.axratios = np.load(beams_folder + 'all_axratios.npy')
+        self.comps = np.load(beams_folder + 'all_comps.npy')
+        self.axratios = np.load(beams_folder + 'all_axratios.npy')
         
     def rotate(self, zenith_rot = 0, ns_rot = 0, ew_rot = 0):
         """
