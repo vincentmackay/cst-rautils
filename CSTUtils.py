@@ -263,26 +263,26 @@ class CSTBeam():
         power_within_angles = np.sum((scaling * self.directivity)[:,:,i_phi_min:i_phi_max,i_theta_min:i_theta_max], axis = (2,3))
         return power_within_angles / total_power
     
-    def get_beamwidth(self, phi_cut, dB_threshold = 3, deg = True):
+    def get_beamwidth(self, phi_cut=None, dB_threshold = 3, deg = True):
         """
         Get the 3dB beamwidth. 
         
         This function gets the 3dB beamwidth at a given phi cut.
         """
-        i_phi_cut = int(phi_cut//self.phi_step)
-        i_phi_cut_2 = int((phi_cut+180) // self.phi_step)
-        
         power = 10 * np.log10(self.directivity)
         beam_max = np.amax(power,axis=(2,3))
-        power_subtracted = np.moveaxis(np.subtract(np.moveaxis(power[:,:,i_phi_cut],2,0),(beam_max-dB_threshold)),0,2)
-        i_beamwidth_right = np.argmax(power_subtracted<=0,axis=2)
-        power_subtracted = np.moveaxis(np.subtract(np.moveaxis(power[:,:,i_phi_cut_2],2,0),(beam_max-dB_threshold)),0,2)
-        i_beamwidth_left = np.argmax(power_subtracted<=0,axis=2)
-        beamwidth = np.zeros([2,self.freqs.shape[0]])
-        for i_pol in [0,1]:
-            beamwidth_right = self.theta[i_phi_cut,:][i_beamwidth_right[i_pol,:]]
-            beamwidth_left = self.theta[i_phi_cut,:][i_beamwidth_left[i_pol,:]]
-            beamwidth[i_pol,:] = beamwidth_right + beamwidth_left
+        # Reshape power to be able to subtract max
+        power = np.moveaxis(power,(2,3),(0,1))
+        power_subtracted = power - beam_max + dB_threshold
+        i_beamwidth = np.argmax(power_subtracted<=0,axis=1)
+        beamwidths = i_beamwidth * self.theta_step
+        if phi_cut == None:
+            print("No phi_cut value passed. Returning the azimuthally averaged beamwidth.")    
+            beamwidth = 2 * np.mean(beamwidths[0,:],axis=0)
+        else:
+            i_phi_cut = int(phi_cut//self.phi_step)
+            i_phi_cut_2 = int(((phi_cut+180)%360) // self.phi_step)
+            beamwidth = beamwidths[i_phi_cut] + beamwidths[i_phi_cut_2]
         if not deg:
             beamwidth*=(np.pi/180)
         return beamwidth
