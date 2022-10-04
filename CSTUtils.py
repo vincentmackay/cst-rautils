@@ -275,7 +275,7 @@ class CSTBeam():
         i_beamwidth = np.argmax(power_subtracted<=0,axis=1)
         beamwidths = i_beamwidth * self.theta_step
         if phi_cut == None:
-            print("No phi_cut value passed. Returning the azimuthally averaged beamwidth.")    
+            # print("No phi_cut value passed. Returning the azimuthally averaged beamwidth.")    
             beamwidth = 2 * np.mean(beamwidths[0,:],axis=0)
         else:
             i_phi_cut = int(phi_cut//self.phi_step)
