@@ -296,3 +296,19 @@ class CSTBeam():
             print('Frequency {:.3g} GHz was not simulated. Using the closest ({:.3g} GHz) instead.'.format(freq, self.freqs[i_freq]))
             print('A list of the simulated frequencies is stored as beam_name.freqs.')
         return i_freq
+    
+    def get_phi_index(self, phi):
+        """
+        Get the phi index of a given phi value.
+        
+        This function gets the phi index for a phi value passed in argument, in degrees.
+        """
+        return int(phi//self.phi_step)
+    
+    def get_theta_index(self, theta):
+        """
+        Get the theta index of a given phi value.
+        
+        This function gets the theta index for a theta value passed in argument, in degrees.
+        """
+        return int(theta//self.theta_step)
