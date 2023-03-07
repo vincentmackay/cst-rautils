@@ -25,8 +25,8 @@ class CSTBeam():
         self.freqs = np.load(beams_folder+'all_freqs.npy')
         self.phi = np.load(beams_folder + 'all_phi.npy')
         self.theta = np.load(beams_folder + 'all_theta.npy')
-        self.phi_step = self.phi[1][0] # = 0.5 (deg)
-        self.theta_step = self.theta[0][1]
+        self.phi_step = np.mean(self.phi[1:,0] - self.phi[:-1,0])
+        self.theta_step = np.mean(self.theta[0,1:] - self.theta[0,:-1])
         self.freq_min = self.freqs[0]
         self.freq_step = self.freqs[1] - self.freqs[0]
         self.gains = np.max(self.directivity,(2,3))
