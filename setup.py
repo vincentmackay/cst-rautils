@@ -9,9 +9,9 @@ Created on Fri Oct 27 12:45:10 2023
 from setuptools import setup
 
 setup(
-    name='cst-rautils',
+    name='cstrautils',
     version='0.1',
-    packages=['cst-rautils'],
+    packages=['cstrautils'],
     install_requires=[
         'numpy',
         'matplotlib',
