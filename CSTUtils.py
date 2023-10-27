@@ -3,37 +3,41 @@
 """
 Created on Tue Aug  2 17:02:11 2022.
 
-@author: vincent
+Parts of this class still assumes the beams may be loaded in dimensions of power.
+I am moving to make it all in dimensions of E-field, and to have power derived
+from E-fields. This has not been fully implemented yet.
+@author: vincentmackay
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
 import copy
 from scipy.special import jn
-
+import glob
 
 class CSTBeam():
     """
     Class containing beams as simulated by CST.
     
     This class take a folder where a beam has been converted to the
-    "all_*.npy" formats, and loads it.
+    .npy formats, and loads it.
     """
     
-    def __init__(self,beams_folder):
-        self.directivity = np.load(beams_folder+'all_directivity.npy')
-        self.freqs = np.load(beams_folder+'all_freqs.npy')
-        self.phi = np.load(beams_folder + 'all_phi.npy')
-        self.theta = np.load(beams_folder + 'all_theta.npy')
+    def __init__(self,directory):
+        self.e_field_magnitudes = np.load(directory+'e_field_magnitudes.npy')
+        self.freqs = np.load(directory+'freqs.npy')
+        self.phi = np.load(directory + 'phi.npy')
+        self.theta = np.load(directory + 'theta.npy')
+        self.e_field_components = np.load(directory + 'e_field_components.npy')
         self.phi_step = np.mean(self.phi[1:,0] - self.phi[:-1,0])
         self.theta_step = np.mean(self.theta[0,1:] - self.theta[0,:-1])
         self.freq_min = self.freqs[0]
         self.freq_step = self.freqs[1] - self.freqs[0]
-        self.gains = np.max(self.directivity,(2,3))
+        self.gains = np.max(self.e_field_magnitudes,(2,3))
         self.wl = 2.99792458e8 / (self.freqs * 1e9) #wavelength, in meters
         self.A_e = ( self.gains * self.wl ** 2 ) / 4 / np.pi
-        self.comps = np.load(beams_folder + 'all_comps.npy')
-        self.axratios = np.load(beams_folder + 'all_axratios.npy')
+        self.e_field_components = np.load(directory + 'e_field_components.npy')
+        self.axial_ratios = np.load(directory + 'axial_ratios.npy')
         
     def rotate(self, zenith_rot = 0, ns_rot = 0, ew_rot = 0):
         """
@@ -72,7 +76,7 @@ class CSTBeam():
                 # Reindex
                 i_new_theta = (new_theta / new_beam.theta_step).astype('int')
                 i_new_phi = (new_phi / new_beam.phi_step).astype('int')
-                new_beam.directivity = new_beam.directivity[:,:,i_new_phi,i_new_theta]
+                new_beam.e_field_magnitudes = new_beam.e_field_magnitudes[:,:,i_new_phi,i_new_theta]
          
         return new_beam
         
@@ -124,7 +128,7 @@ class CSTBeam():
         
     
         
-        power = self.directivity
+        power = self.e_field_magnitudes
         if norm_max:
             power = np.moveaxis(np.moveaxis(power,[0,1],[2,3]) / np.max(power,axis=(2,3)),[0,1],[2,3])
         if dB:
@@ -207,7 +211,7 @@ class CSTBeam():
             fig,ax = plt.subplots(1,1,figsize=figsize)
         else:
             fig = ax.get_figure()
-        power = self.directivity
+        power = self.e_field_magnitudes
         if norm_max:
             power = np.moveaxis(np.moveaxis(power,[0,1],[2,3]) / np.max(power,axis=(2,3)),[0,1],[2,3])
         if dB:
@@ -253,12 +257,12 @@ class CSTBeam():
         by the total output power.
         """
         scaling = np.abs( np.sin( self.theta * np.pi / 180))
-        total_power = np.sum(scaling * self.directivity, axis = (2,3))
+        total_power = np.sum(scaling * self.e_field_magnitudes, axis = (2,3))
         i_phi_min = int(phi_min//self.phi_step)
         i_phi_max = int(phi_max//self.phi_step)
         i_theta_min = int(theta_min//self.theta_step)
         i_theta_max = int(theta_max//self.theta_step)
-        power_within_angles = np.sum((scaling * self.directivity)[:,:,i_phi_min:i_phi_max,i_theta_min:i_theta_max], axis = (2,3))
+        power_within_angles = np.sum((scaling * self.e_field_magnitudes)[:,:,i_phi_min:i_phi_max,i_theta_min:i_theta_max], axis = (2,3))
         return power_within_angles / total_power
     
     def get_beamwidth(self, phi_cut=None, dB_threshold = 3, deg = True):
@@ -267,7 +271,7 @@ class CSTBeam():
         
         This function gets the 3dB beamwidth at a given phi cut.
         """
-        power = 10 * np.log10(self.directivity)
+        power = 10 * np.log10(self.e_field_magnitudes)
         beam_max = np.amax(power,axis=(2,3))
         # Reshape power to be able to subtract max
         power = np.moveaxis(power,(2,3),(0,1))
@@ -312,3 +316,78 @@ class CSTBeam():
         This function gets the theta index for a theta value passed in argument, in degrees.
         """
         return int(theta//self.theta_step)
+    
+    
+def convert_farfields(directory):
+    """Convert E-field beams to .npy objects.
+    
+    This function takes in only one argument, which is the folder containing the E-field beams
+    as exported in CST. In the current implementation, the beams need to be exported in linear
+    scaling (no dB), and they need to be exported in E-field dimensions. If the beams are in power
+    dimensions, no error will be returned but the results will not make physical sense."""
+    fnames = glob.glob(f'{directory}*farfield*txt')
+    
+    freqs = [float(fname.split('=')[1].split(')')[0]) for fname in fnames]
+    ports = [int(fname.split('[')[1].split(']')[0]) for fname in fnames]
+    
+    freqs = np.array(sorted(set(freqs)))
+    nports = max(ports)
+    
+    dat = np.loadtxt(fnames[len(fnames)//2],skiprows=2)
+    ntheta = len(np.unique(dat[:,0]))
+    nphi = len(np.unique(dat[:,1]))
+    assert(ntheta * nphi==dat.shape[0])
+    
+    theta = np.reshape(dat[:,0] , [nphi,ntheta])
+    phi = np.reshape(dat[:,1] , [nphi,ntheta])
+    nfiles = len(fnames)
+    
+    nfreq = freqs.shape[0]
+    
+    # e_field_magnitudes will hold the e-field magnitude
+    e_field_magnitudes = np.zeros([nports,nfreq,nphi,ntheta],dtype=np.float32)#we can save on space with float32's; actual numbers are only a few digits 
+    
+    # e_field_components will hold the components in theta and phi, as complex numbers
+    e_field_components = np.zeros([nports,nfreq,nphi,ntheta,2],dtype=np.complex64)
+    
+    # axial_ratios will hold the axial ratios; not sure this is useful...
+    axial_ratios = np.zeros([nports,nfreq,nphi,ntheta],dtype=np.float32)
+    
+    for i in range(nfiles):
+        # columns go:
+        # 0 = theta
+        # 1 = phi
+        # 2 = e_field_magnitudes
+        # 3 = theta_comp (abs)
+        # 4 = theta_comp (phase)
+        # 5 = phi_comp (abs)
+        # 6 = phi_comp (phase)
+        # 7 = axial_ratios
+        if i%10==0:
+            print('working on file '+str(i+1)+' of '+str(nfiles))
+        freq = float((fnames[i].split('=')[1]).split(')')[0])
+        i_freq = np.where(freqs == freq)
+        del dat
+        dat=np.loadtxt(fnames[i],skiprows=2, usecols = (2,3,4,5,6,7))
+        e_field_magnitude = np.reshape(dat[:,0],[nphi,ntheta])
+        theta_comp_abs = np.reshape(dat[:,1],[nphi,ntheta])
+        theta_comp_phase = np.reshape(dat[:,2],[nphi,ntheta])
+        phi_comp_abs = np.reshape(dat[:,3],[nphi,ntheta])
+        phi_comp_phase = np.reshape(dat[:,4],[nphi,ntheta])
+        axial_ratio = np.reshape(dat[:,5],[nphi,ntheta])
+        if nports>1:
+            i_port = int(fnames[i].split('[')[1].split(']')[0])-1
+        else:
+            i_port = 0
+        e_field_magnitudes[i_port,i_freq,:,:] = e_field_magnitude
+        e_field_components[i_port,i_freq,:,:,0]=theta_comp_abs * np.exp(1j * theta_comp_phase * np.pi / 180)
+        e_field_components[i_port,i_freq,:,:,1]=phi_comp_abs * np.exp(1j * phi_comp_phase * np.pi / 180)
+        axial_ratios[i_port,i_freq,:,:] = axial_ratio
+        
+    np.save(directory+'e_field_magnitudes.npy',np.array(e_field_magnitudes))
+    np.save(directory+'theta.npy',theta)
+    np.save(directory+'phi.npy',phi)
+    np.save(directory+'freqs.npy',freqs)
+    np.save(directory+'e_field_components',e_field_components)
+    np.save(directory+'axial_ratios.npy',axial_ratios)
+    print('Done!')
