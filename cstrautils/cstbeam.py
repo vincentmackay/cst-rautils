@@ -15,7 +15,7 @@ import copy
 from scipy.special import jn
 
 
-class cstbeam():
+class beam():
     """
     Class containing beams as simulated by CST.
     

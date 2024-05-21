@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri Oct 27 12:00:08 2023
+Created on Fri Oct 27 12:00:09 2023
 
 @author: vincent
 """
@@ -54,7 +54,7 @@ def convert_farfields(directory):
         # 5 = phi_comp (abs)
         # 6 = phi_comp (phase)
         # 7 = axial_ratios
-        if i%10==0:
+        if (i+1)%10==0:
             print('working on file '+str(i+1)+' of '+str(nfiles))
         freq = float((fnames[i].split('=')[1]).split(')')[0])
         i_freq = np.where(freqs == freq)

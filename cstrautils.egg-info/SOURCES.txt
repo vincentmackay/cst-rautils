@@ -1,0 +1,11 @@
+README.md
+setup.py
+__pycache__/CSTUtils.cpython-38.pyc
+cstrautils/__init__.py
+cstrautils/convert_farfields.py
+cstrautils/cstbeam.py
+cstrautils.egg-info/PKG-INFO
+cstrautils.egg-info/SOURCES.txt
+cstrautils.egg-info/dependency_links.txt
+cstrautils.egg-info/requires.txt
+cstrautils.egg-info/top_level.txt
